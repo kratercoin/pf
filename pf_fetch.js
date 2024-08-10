@@ -1,7 +1,29 @@
-const axios = require('axios'); // Use require for CommonJS
+const axios = require('axios');
 
 let lastFetchedData = null; // To store the last fetched token data
 const seenMints = new Set(); // To track seen mint addresses
+
+// Function to fetch the current SOL price
+async function fetchSolPrice() {
+  try {
+    const response = await axios.get('https://frontend-api.pump.fun/sol-price');
+    return response.data.solPrice;
+  } catch (error) {
+    console.error('Error fetching SOL price:', error.message);
+    return null;
+  }
+}
+
+// Function to format numbers in a more readable way (e.g., 10.5k, 1.2M)
+function formatNumber(number) {
+  if (number >= 1e6) {
+    return `${(number / 1e6).toFixed(1)}M`;
+  } else if (number >= 1e3) {
+    return `${(number / 1e3).toFixed(1)}k`;
+  } else {
+    return number.toFixed(1);
+  }
+}
 
 // Function to fetch the latest token data
 async function fetchLatestToken() {
@@ -33,7 +55,13 @@ async function fetchLatestToken() {
         // Ensure the market cap is valid and not NaN
         const marketCapInSOL = parseFloat(data.market_cap);
         if (!isNaN(marketCapInSOL)) {
-          console.log(`Market Cap: ${marketCapInSOL} SOL`);
+          const solPrice = await fetchSolPrice();
+          if (solPrice) {
+            const marketCapInUSD = marketCapInSOL * solPrice;
+            console.log(`Market Cap: ${marketCapInSOL} SOL (${formatNumber(marketCapInUSD)} USD)`);
+          } else {
+            console.log('Market Cap: Unable to convert to USD');
+          }
         } else {
           console.log('Market Cap: Invalid value');
         }
@@ -59,7 +87,7 @@ async function fetchLatestToken() {
   }
 
   // Fetch again after a delay to avoid rate limiting
-  setTimeout(fetchLatestToken, 50); // Adjust the delay as needed
+  setTimeout(fetchLatestToken, 50); // Adjust the delay (e.g., 5000 ms = 5 seconds)
 }
 
 // Start fetching the latest token data continuously
